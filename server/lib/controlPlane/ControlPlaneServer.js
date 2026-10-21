@@ -469,6 +469,16 @@ class ControlPlaneServer extends EventEmitter {
 
         logger.info(`Data connection ready for session ${sessionId} from ${remoteAddr}`);
 
+        // The handshake listener was removed but the socket is still flowing, so anything the engine
+        // sends before the consumer attaches its own "data" listener would be dropped. Hold it until then.
+        socket.pause();
+        const resumeOnConsumer = (event) => {
+            if (event !== "data") return;
+            socket.removeListener("newListener", resumeOnConsumer);
+            process.nextTick(() => socket.resume());
+        };
+        socket.on("newListener", resumeOnConsumer);
+
         if (!this._dataConnections.has(sessionId)) {
             this._dataConnections.set(sessionId, new Set());
         }

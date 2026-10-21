@@ -93,7 +93,13 @@ const openEngineSessionWithResult = async (sessionId, sessionType, host, port, p
     const dataSocketPromise = controlPlane.waitForDataConnection(sessionId);
     dataSocketPromise.catch(() => {});
 
-    const result = await controlPlane.openSession(sessionId, sessionType, host, port, params, jumpHosts, engineId || null);
+    let result;
+    try {
+        result = await controlPlane.openSession(sessionId, sessionType, host, port, params, jumpHosts, engineId || null);
+    } catch (err) {
+        dataSocketPromise.then((socket) => socket.destroy(), () => {});
+        throw err;
+    }
     return { dataSocket: await dataSocketPromise, result };
 };
 
